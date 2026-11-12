@@ -22,13 +22,14 @@ I built it to answer one question: *"Which box is my blue wool sweater in?"*
 
 ```
 StowIt/
-├── StowIt/          Class library with the core logic (no UI code)
+├── StowIt.Core/      Class library with the core logic (no UI code)
 │   ├── Box.cs
 │   ├── Item.cs
 │   ├── Category.cs
 │   ├── StorageArea.cs
 │   └── StorageService.cs
-└── StowIt.App/      Front end that uses the library (coming soon)
+└── StowIt.Test/      Testing of functions in library
+└── StowIt.App/       Front end that uses the library (coming soon)
 ```
 
 The library only returns data. Any front end (console, WPF, web) decides how to display it.
