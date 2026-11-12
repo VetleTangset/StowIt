@@ -57,7 +57,7 @@ namespace StowIt.Core
             box.Items.Add(item);
             return true;
         }
-        public bool RemoveItemFromBox(Guid id,  Item item)
+        public bool RemoveItemFromBox(Guid id, Item item)
         {
             ArgumentNullException.ThrowIfNull(item);
             var box = _boxes.FirstOrDefault(i => i.Id == id);
@@ -69,5 +69,6 @@ namespace StowIt.Core
             box.Items.Remove(item);
             return true;
 
+        }
     }
 }
