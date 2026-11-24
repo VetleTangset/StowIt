@@ -1,29 +1,48 @@
-﻿namespace StowIt.Core
+﻿using Microsoft.EntityFrameworkCore;
+
+namespace StowIt.Core
 {
     public class StorageService
     {
-        // Boxes
-        private readonly List<Box> _boxes = [];
+        private readonly StowItDbContext _db;
 
-        public IReadOnlyList<Box> GetAllBoxes() => _boxes.AsReadOnly();
+        public StorageService(StowItDbContext db)
+        {
+            _db = db;
+        }
+
+        // Boxes
+        public IReadOnlyList<Box> GetAllBoxes()
+        {
+            return _db.Boxes.Include(b => b.Items).ToList();
+        }
 
         public void AddBox(Box box)
         {
             ArgumentNullException.ThrowIfNull(box);
-            _boxes.Add(box);
+            _db.Boxes.Add(box);
+            _db.SaveChanges();
         }
 
         public bool RemoveBox(Guid id)
         {
-            return _boxes.RemoveAll(b => b.Id == id) > 0;
+            var box = _db.Boxes.FirstOrDefault(b => b.Id == id);
+            if (box == null)
+            {
+                return false;
+            }
+
+            _db.Boxes.Remove(box);   
+            _db.SaveChanges();
+            return true;
         }
 
         public Box? FindBoxById(Guid id)
         {
-            return _boxes.FirstOrDefault(b => b.Id == id);
+            return _db.Boxes.Include(b => b.Items).FirstOrDefault(b => b.Id == id);
         }
 
-        public IReadOnlyList<Box> FindBoxsByItem(string searchText)
+        public IReadOnlyList<Box> FindBoxesByItem(string searchText)
         {
             if (string.IsNullOrWhiteSpace(searchText))
             {
@@ -32,15 +51,15 @@
 
             var terms = searchText.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-            return _boxes.Where(b => b.Items.Any(i => terms.All(t => i.Name.Contains(t, StringComparison.OrdinalIgnoreCase)))).ToList();
+            return GetAllBoxes()
+                .Where(b => b.Items.Any(i => terms.All(t => i.Name.Contains(t, StringComparison.OrdinalIgnoreCase))))
+                .ToList();
         }
 
-        //Items
-        private IEnumerable<Item> AllItems() => _boxes.SelectMany(b => b.Items);
-
+        // Items
         public Item? FindItemById(Guid id)
         {
-            return _boxes.SelectMany(b => b.Items).FirstOrDefault(i => i.Id == id);
+            return _db.Items.FirstOrDefault(i => i.Id == id);
         }
 
         public IReadOnlyList<Item> GetItemInCategory(Category category)
@@ -49,7 +68,8 @@
             {
                 return [];
             }
-            return AllItems().Where(i => i.Category.HasFlag(category)).ToList();
+
+            return _db.Items.Where(i => (i.Category & category) == category).ToList();
         }
 
         public bool AddCategory(Guid itemId, Category category)
@@ -61,6 +81,7 @@
             }
 
             item.Category |= category;
+            _db.SaveChanges();
             return true;
         }
 
@@ -73,6 +94,7 @@
             }
 
             item.Category &= ~category;
+            _db.SaveChanges();
             return true;
         }
 
@@ -80,25 +102,29 @@
         {
             ArgumentNullException.ThrowIfNull(item);
 
-            var box = FindBoxById(boxId);
+            var box = _db.Boxes.FirstOrDefault(b => b.Id == boxId);
             if (box == null)
             {
                 return false;
             }
 
             box.Items.Add(item);
+            _db.SaveChanges();
             return true;
         }
 
         public bool RemoveItemFromBox(Guid boxId, Guid itemId)
         {
             var box = FindBoxById(boxId);
-            if (box == null)
+            var item = box?.Items.FirstOrDefault(i => i.Id == itemId);
+            if (item == null)
             {
                 return false;
             }
-            
-            return box.Items.RemoveAll(i => i.Id == itemId) > 0;
+
+            _db.Items.Remove(item);
+            _db.SaveChanges();
+            return true;
         }
     }
 }

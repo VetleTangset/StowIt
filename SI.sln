@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StowIt.Core", "StowIt\StowI
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StowIt.Test", "StowIt.Test\StowIt.Test.csproj", "{5BF2F19B-12C8-4862-AFA0-10960E6E0DCE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StowIt.App", "StowIt.App\StowIt.App.csproj", "{0DB51DF0-70BC-495A-8E16-1CAD9E800DF9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{5BF2F19B-12C8-4862-AFA0-10960E6E0DCE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5BF2F19B-12C8-4862-AFA0-10960E6E0DCE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5BF2F19B-12C8-4862-AFA0-10960E6E0DCE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0DB51DF0-70BC-495A-8E16-1CAD9E800DF9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0DB51DF0-70BC-495A-8E16-1CAD9E800DF9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0DB51DF0-70BC-495A-8E16-1CAD9E800DF9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0DB51DF0-70BC-495A-8E16-1CAD9E800DF9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

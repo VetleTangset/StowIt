@@ -1,36 +1,56 @@
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using StowIt.Core;
 
 namespace StowIt.Test
 {
-    public class StowItTests
+    public class StowItTests : IDisposable
     {
+        private readonly SqliteConnection _connection;
+        private readonly StowItDbContext _db;
+        private readonly StorageService _service;
+
+        public StowItTests()
+        {
+            _connection = new SqliteConnection("DataSource=:memory:");
+            _connection.Open();   // the in-memory database lives as long as this connection
+
+            var options = new DbContextOptionsBuilder<StowItDbContext>()
+                .UseSqlite(_connection)
+                .Options;
+
+            _db = new StowItDbContext(options);
+            _db.Database.EnsureCreated();
+            _service = new StorageService(_db);
+        }
+
+        public void Dispose()
+        {
+            _db.Dispose();
+            _connection.Dispose();
+        }
         // Boxes
         [Fact]
         public void AddBox_NullBox_ThrowArgumentNullExeption()
         {
-            var service = new StorageService();
-
-            Assert.Throws<ArgumentNullException>(() => service.AddBox(null!));
+            Assert.Throws<ArgumentNullException>(() => _service.AddBox(null!));
         }
 
         [Fact]
         public void AddBox_NonNullBox_AddsBoxToList()
         {
-            var service = new StorageService();
             var box = new Box("Test");
 
-            service.AddBox(box);
+            _service.AddBox(box);
 
-            var storedBox = Assert.Single(service.GetAllBoxes());
+            var storedBox = Assert.Single(_service.GetAllBoxes());
             Assert.Equal(box.Id, storedBox.Id);
         }
 
         [Fact]
         public void RemoveBox_UnknownId_ReturnFalse()
         {
-            var service = new StorageService();
-
-            var result = service.RemoveBox(Guid.NewGuid());
+            var result = _service.RemoveBox(Guid.NewGuid());
 
             Assert.False(result);
         }
@@ -38,22 +58,19 @@ namespace StowIt.Test
         [Fact]
         public void RemoveBox_ExistingId_ReturnTrue()
         {
-            var service = new StorageService();
             var box = new Box("Test");
-            service.AddBox(box);
+            _service.AddBox(box);
 
-            var result = service.RemoveBox(box.Id);
+            var result = _service.RemoveBox(box.Id);
 
             Assert.True(result);
-            Assert.Empty(service.GetAllBoxes());
+            Assert.Empty(_service.GetAllBoxes());
         }
 
         [Fact]
         public void FindBoxById_NonExistingId_ReturnNull()
         {
-            var service = new StorageService();
-
-            var result = service.FindBoxById(Guid.NewGuid());
+            var result = _service.FindBoxById(Guid.NewGuid());
 
             Assert.Null(result);
         }
@@ -61,11 +78,10 @@ namespace StowIt.Test
         [Fact]
         public void FindBoxById_ExistingId_ReturnNotNull()
         {
-            var service = new StorageService();
             var box = new Box("Test");
-            service.AddBox(box);
+            _service.AddBox(box);
 
-            var result = service.FindBoxById(box.Id);
+            var result = _service.FindBoxById(box.Id);
 
             Assert.NotNull(result);
         }
@@ -73,9 +89,7 @@ namespace StowIt.Test
         [Fact]
         public void FindBoxByItem_EmptySearchString_ReturnEmpty()
         {
-            var service = new StorageService();
-
-            var result = service.FindBoxsByItem("");
+            var result = _service.FindBoxesByItem("");
 
             Assert.Empty(result);
         }
@@ -83,13 +97,12 @@ namespace StowIt.Test
         [Fact]
         public void FindBoxByItem_ExistingSearchString_ReturnBoxContainingItem()
         {
-            var service = new StorageService();
             var box = new Box("Test");
             box.Items.Add(new Item("Blue wool sweater"));
-            service.AddBox(box);
+            _service.AddBox(box);
 
 
-            var result = service.FindBoxsByItem("wool sweater");
+            var result = _service.FindBoxesByItem("wool sweater");
 
             var foundBox = Assert.Single(result);
             Assert.Equal(box.Id, foundBox.Id);
@@ -99,9 +112,7 @@ namespace StowIt.Test
         [Fact]
         public void GetItemInCategory_CategoryNone_ReturnEmptyList()
         {
-            var service = new StorageService();
-
-            var result = service.GetItemInCategory(Category.None);
+            var result = _service.GetItemInCategory(Category.None);
 
             Assert.Empty(result);
         }
@@ -109,12 +120,11 @@ namespace StowIt.Test
         [Fact]
         public void GetItemInCategory_CombinedCategories_FoundByOneFlag()
         {
-            var service = new StorageService();
             var box = new Box("Test");
             box.Items.Add(new Item("Drill") { Category = Category.Tools | Category.Electronics });
-            service.AddBox(box);
+            _service.AddBox(box);
 
-            var result = service.GetItemInCategory(Category.Tools);
+            var result = _service.GetItemInCategory(Category.Tools);
 
             Assert.Single(result);
         }
@@ -122,13 +132,12 @@ namespace StowIt.Test
         [Fact]
         public void AddCategory_ExistingItem_KeepsOldAndAddsNew()
         {
-            var service = new StorageService();
             var box = new Box("Test");
             var item = new Item("Drill") { Category = Category.Tools };
             box.Items.Add(item);
-            service.AddBox(box);
+            _service.AddBox(box);
 
-            var result = service.AddCategory(item.Id, Category.Electronics);
+            var result = _service.AddCategory(item.Id, Category.Electronics);
 
             Assert.True(result);
             Assert.Equal(Category.Tools | Category.Electronics, item.Category);
@@ -137,9 +146,7 @@ namespace StowIt.Test
         [Fact]
         public void AddCategory_UnknownItem_ReturnsFalse()
         {
-            var service = new StorageService();
-
-            var result = service.AddCategory(Guid.NewGuid(), Category.Tools);
+            var result = _service.AddCategory(Guid.NewGuid(), Category.Tools);
 
             Assert.False(result);
         }
@@ -147,13 +154,12 @@ namespace StowIt.Test
         [Fact]
         public void RemoveCategory_ExistingItem_RemovesOnlyThatCategory()
         {
-            var service = new StorageService();
             var box = new Box("Test");
             var item = new Item("Drill") { Category = Category.Tools | Category.Electronics };
             box.Items.Add(item);
-            service.AddBox(box);
+            _service.AddBox(box);
 
-            var result = service.RemoveCategory(item.Id, Category.Tools);
+            var result = _service.RemoveCategory(item.Id, Category.Tools);
 
             Assert.True(result);
             Assert.Equal(Category.Electronics, item.Category);
@@ -162,21 +168,19 @@ namespace StowIt.Test
         [Fact]
         public void AddItemToBox_NullItem_ThrowArgumentNullExeption()
         {
-            var service = new StorageService();
             var box = new Box("Test");
-            service.AddBox(box);
+            _service.AddBox(box);
 
-            Assert.Throws<ArgumentNullException>(() => service.AddItemToBox(box.Id, null!));
+            Assert.Throws<ArgumentNullException>(() => _service.AddItemToBox(box.Id, null!));
         }
 
         [Fact]
         public void AddItemToBox_ExistingBox_AddItemAndReturnTrue()
         {
-            var service = new StorageService();
             var box = new Box("Test");
-            service.AddBox(box);
+            _service.AddBox(box);
 
-            var result = service.AddItemToBox(box.Id, new Item("Test Item"));
+            var result = _service.AddItemToBox(box.Id, new Item("Test Item"));
 
             Assert.True(result);
             Assert.Single(box.Items);
@@ -185,9 +189,7 @@ namespace StowIt.Test
         [Fact]
         public void AddItemToBox_UnknownBox_ReturnFalse()
         {
-            var service = new StorageService();
-
-            var result = service.AddItemToBox(Guid.NewGuid(), new Item("Test Item"));
+            var result = _service.AddItemToBox(Guid.NewGuid(), new Item("Test Item"));
 
             Assert.False(result);
         }
