@@ -26,13 +26,13 @@ StowIt/
 │   ├── Box.cs
 │   ├── Item.cs
 │   ├── Category.cs
-│   ├── DBContext.cs
+│   ├── StowItDbContext.cs
 │   ├── StorageArea.cs
 │   └── StorageService.cs
 └── StowIt.Test/      Testing of functions in library
 │   └── StowItTests.cs
 └── StowIt.App/       Front end that uses the library
-    ├── Programs.cs
+    ├── Program.cs
     └── StowItDbContextFactory.cs
 ```
 
