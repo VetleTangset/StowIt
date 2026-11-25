@@ -5,10 +5,64 @@ namespace StowIt.Core
     public class StorageService
     {
         private readonly StowItDbContext _db;
+        private readonly string _photoFolder;
 
-        public StorageService(StowItDbContext db)
+        public StorageService(StowItDbContext db, string photoFolder)
         {
             _db = db;
+            _photoFolder = photoFolder;
+            Directory.CreateDirectory(_photoFolder);
+        }
+
+        // Photos
+        private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
+
+        public bool SetItemPhoto(Guid itemId, Stream photo, string extension)
+        {
+            ArgumentNullException.ThrowIfNull(photo);
+            ArgumentException.ThrowIfNullOrWhiteSpace(extension);
+
+            if (!extension.StartsWith('.'))
+            {
+                extension = "." + extension;
+            }
+
+            extension = extension.ToLowerInvariant();
+            if (!AllowedExtensions.Contains(extension))
+            {
+                throw new ArgumentException($"Unsupported photo type: {extension}", nameof(extension));
+            }
+
+            var item = _db.Items.FirstOrDefault(i => i.Id == itemId);
+            if (item == null) return false;
+
+            var fileName = $"{Guid.NewGuid()}{extension}";
+            using (var file = File.Create(Path.Combine(_photoFolder, fileName)))
+            {
+                photo.CopyTo(file);
+            }
+
+            DeletePhotoFile(item.PhotoFileName);
+            item.PhotoFileName = fileName;
+            _db.SaveChanges();
+            return true;
+        }
+
+        public string? GetPhotoPath(Item item) =>
+            item.PhotoFileName == null ? null : Path.Combine(_photoFolder, item.PhotoFileName);
+
+        private void DeletePhotoFile(string? fileName)
+        {
+            if (string.IsNullOrEmpty(fileName))
+            {
+                return;
+            }
+
+            var path = Path.Combine(_photoFolder, fileName);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
         }
 
         // Boxes
@@ -30,6 +84,11 @@ namespace StowIt.Core
             if (box == null)
             {
                 return false;
+            }
+
+            foreach (var item in box.Items)
+            {
+                DeletePhotoFile(item.PhotoFileName);
             }
 
             _db.Boxes.Remove(box);   
@@ -122,6 +181,7 @@ namespace StowIt.Core
                 return false;
             }
 
+            DeletePhotoFile(item.PhotoFileName);
             _db.Items.Remove(item);
             _db.SaveChanges();
             return true;

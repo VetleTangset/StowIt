@@ -2,6 +2,7 @@
 
 public enum StorageArea
 {
-    Apartment,
+    AptUse,
+    AptStore,
     Basement
 }

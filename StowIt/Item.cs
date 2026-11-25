@@ -5,6 +5,7 @@
         public Guid Id { get; init; } = Guid.NewGuid();
         public string Name { get; set; } = string.Empty;
         public Category Category { get; set; }
+        public string? PhotoFileName { get; set; }
 
         public Item(string name)
         {

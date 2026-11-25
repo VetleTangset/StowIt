@@ -6,6 +6,10 @@ var dbPath = Path.Combine(
     "StowIt", "stowit.db");
 Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
+var photoFolder = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+    "StowIt", "photos");
+
 var options = new DbContextOptionsBuilder<StowItDbContext>()
     .UseSqlite($"Data Source={dbPath}")
     .Options;
@@ -13,4 +17,4 @@ var options = new DbContextOptionsBuilder<StowItDbContext>()
 using var db = new StowItDbContext(options);
 db.Database.Migrate();
 
-var service = new StorageService(db);
+var service = new StorageService(db, photoFolder);
