@@ -54,6 +54,22 @@ namespace StowIt.Test
         }
 
         [Fact]
+        public void AddBox_WithLocation_SavesLocation()
+        {
+            var box = _service.AddBox(new Box("Winter clothes") { Location = StorageArea.Basement });
+
+            var stored = Assert.Single(_service.GetAllBoxes());
+            Assert.Equal(box.Id, stored.Id);
+            Assert.Equal(StorageArea.Basement, stored.Location);
+        }
+
+        [Fact]
+        public void AddBox_BlankLabel_ThrowsArgumentException()
+        {
+            Assert.Throws<ArgumentException>(() => _service.AddBox(new Box("  ")));
+        }
+
+        [Fact]
         public void RemoveBox_UnknownId_ReturnFalse()
         {
             var result = _service.RemoveBox(Guid.NewGuid());
@@ -72,6 +88,8 @@ namespace StowIt.Test
             Assert.True(result);
             Assert.Empty(_service.GetAllBoxes());
         }
+
+
 
         [Fact]
         public void FindBoxById_NonExistingId_ReturnNull()
@@ -114,7 +132,137 @@ namespace StowIt.Test
             Assert.Equal(box.Id, foundBox.Id);
         }
 
+        [Fact]
+        public void UpdateBox_ExistingBox_ChangesLabelAndLocation()
+        {
+            var box = _service.AddBox(new Box("Old label") { Location = StorageArea.Basement });
+
+            var result = _service.UpdateBox(box.Id, "New label", StorageArea.AptStore);
+
+            Assert.True(result);
+
+            // Read with a fresh context so we see what is really in the database
+            var options = new DbContextOptionsBuilder<StowItDbContext>()
+                .UseSqlite(_connection)
+                .Options;
+            using var freshDb = new StowItDbContext(options);
+            var loaded = new StorageService(freshDb, _photoFolder).FindBoxById(box.Id)!;
+
+            Assert.Equal("New label", loaded.Label);
+            Assert.Equal(StorageArea.AptStore, loaded.Location);
+        }
+
+        [Fact]
+        public void UpdateBox_UnknownId_ReturnsFalse()
+        {
+            var result = _service.UpdateBox(Guid.NewGuid(), "Label", null);
+
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void UpdateBox_BlankLabel_Throws()
+        {
+            var box = _service.AddBox(new Box("Test"));
+
+            Assert.Throws<ArgumentException>(() => _service.UpdateBox(box.Id, "  ", null));
+        }
+
+        [Fact]
+        public void UpdateBox_NullLocation_ClearsLocation()
+        {
+            var box = _service.AddBox(new Box("Test") { Location = StorageArea.Basement });
+
+            _service.UpdateBox(box.Id, "Test", null);
+
+            var options = new DbContextOptionsBuilder<StowItDbContext>()
+                .UseSqlite(_connection)
+                .Options;
+            using var freshDb = new StowItDbContext(options);
+            var loaded = new StorageService(freshDb, _photoFolder).FindBoxById(box.Id)!;
+
+            Assert.Null(loaded.Location);
+        }
+
         //Items
+        [Fact]
+        public void MoveItem_ValidMove_ItemChangesBoxAndKeepsData()
+        {
+            var basement = new Box("Basement box") { Location = StorageArea.Basement };
+            var closet = new Box("Closet") { Location = StorageArea.AptUse };
+            var sweater = new Item("Blue wool sweater") { Category = Category.Clothing };
+            basement.Items.Add(sweater);
+            _service.AddBox(basement);
+            _service.AddBox(closet);
+
+            var result = _service.MoveItem(sweater.Id, basement.Id, closet.Id);
+
+            Assert.True(result);
+
+            // Uses a fresh context so we read what is really in the database
+            var options = new DbContextOptionsBuilder<StowItDbContext>()
+                .UseSqlite(_connection)
+                .Options;
+            using var freshDb = new StowItDbContext(options);
+            var freshService = new StorageService(freshDb, _photoFolder);
+
+            Assert.Empty(freshService.FindBoxById(basement.Id)!.Items);
+            var moved = Assert.Single(freshService.FindBoxById(closet.Id)!.Items);
+            Assert.Equal(sweater.Id, moved.Id);
+            Assert.Equal(Category.Clothing, moved.Category);
+        }
+
+        [Fact]
+        public void MoveItem_ItemWithPhoto_KeepsPhotoFile()
+        {
+            var from = new Box("From");
+            var to = new Box("To");
+            var item = new Item("Blue wool sweater");
+            from.Items.Add(item);
+            _service.AddBox(from);
+            _service.AddBox(to);
+
+            using (var stream = new MemoryStream([1, 2, 3]))
+            {
+                _service.SetItemPhoto(item.Id, stream, ".jpg");
+            }
+            var photoPath = Path.Combine(_photoFolder, item.PhotoFileName!);
+
+            _service.MoveItem(item.Id, from.Id, to.Id);
+
+            Assert.True(File.Exists(photoPath));
+            Assert.NotNull(item.PhotoFileName);
+        }
+
+        [Fact]
+        public void MoveItem_UnknownTargetBox_ReturnsFalseAndKeepsItem()
+        {
+            var from = new Box("From");
+            var item = new Item("Blue wool sweater");
+            from.Items.Add(item);
+            _service.AddBox(from);
+
+            var result = _service.MoveItem(item.Id, from.Id, Guid.NewGuid());
+
+            Assert.False(result);
+            Assert.Single(_service.FindBoxById(from.Id)!.Items);
+        }
+
+        [Fact]
+        public void MoveItem_ItemNotInSourceBox_ReturnsFalse()
+        {
+            var a = new Box("A");
+            var b = new Box("B");
+            var item = new Item("Blue wool sweater");
+            a.Items.Add(item);
+            _service.AddBox(a);
+            _service.AddBox(b);
+
+            var result = _service.MoveItem(item.Id, b.Id, a.Id);
+
+            Assert.False(result);
+        }
+
         [Fact]
         public void GetItemInCategory_CategoryNone_ReturnEmptyList()
         {

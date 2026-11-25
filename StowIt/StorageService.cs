@@ -71,11 +71,14 @@ namespace StowIt.Core
             return _db.Boxes.Include(b => b.Items).ToList();
         }
 
-        public void AddBox(Box box)
+        public Box AddBox(Box box)
         {
             ArgumentNullException.ThrowIfNull(box);
+            ArgumentException.ThrowIfNullOrWhiteSpace(box.Label);
+
             _db.Boxes.Add(box);
             _db.SaveChanges();
+            return box;
         }
 
         public bool RemoveBox(Guid id)
@@ -92,6 +95,22 @@ namespace StowIt.Core
             }
 
             _db.Boxes.Remove(box);   
+            _db.SaveChanges();
+            return true;
+        }
+
+        public bool UpdateBox(Guid id, string label, StorageArea? location)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(label);
+
+            var box = _db.Boxes.FirstOrDefault(b => b.Id == id);
+            if (box == null)
+            {
+                return false;
+            }
+
+            box.Label = label;
+            box.Location = location;
             _db.SaveChanges();
             return true;
         }
@@ -119,6 +138,32 @@ namespace StowIt.Core
         public Item? FindItemById(Guid id)
         {
             return _db.Items.FirstOrDefault(i => i.Id == id);
+        }
+
+        public bool MoveItem(Guid itemId, Guid fromBoxId, Guid toBoxId)
+        {
+            if (fromBoxId == toBoxId)
+            {
+                return false;
+            }
+
+            var from = FindBoxById(fromBoxId);   // includes Items
+            var to = FindBoxById(toBoxId);
+            if (from == null || to == null)
+            {
+                return false;
+            }
+
+            var item = from.Items.FirstOrDefault(i => i.Id == itemId);
+            if (item == null)
+            {
+                return false;
+            }
+
+            from.Items.Remove(item);
+            to.Items.Add(item);
+            _db.SaveChanges();
+            return true;
         }
 
         public IReadOnlyList<Item> GetItemInCategory(Category category)
