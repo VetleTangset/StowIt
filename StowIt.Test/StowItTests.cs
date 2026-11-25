@@ -288,5 +288,79 @@ namespace StowIt.Test
 
             Assert.Throws<ArgumentException>(() => _service.SetItemPhoto(item.Id, stream, ".exe"));
         }
+
+        [Fact]
+        public void SetItemPhoto_ReplacingPhoto_DeletesOldFile()
+        {
+            var box = new Box("Test");
+            var item = new Item("Blue wool sweater");
+            box.Items.Add(item);
+            _service.AddBox(box);
+
+            using (var first = new MemoryStream([1, 2, 3]))
+            {
+                _service.SetItemPhoto(item.Id, first, ".jpg");
+            }
+            var oldFileName = item.PhotoFileName!;
+
+            using (var second = new MemoryStream([4, 5, 6]))
+            {
+                _service.SetItemPhoto(item.Id, second, ".jpg");
+            }
+
+            Assert.NotEqual(oldFileName, item.PhotoFileName);
+            Assert.False(File.Exists(Path.Combine(_photoFolder, oldFileName)));
+            Assert.True(File.Exists(Path.Combine(_photoFolder, item.PhotoFileName!)));
+        }
+
+        [Fact]
+        public void RemoveItemFromBox_ItemWithPhoto_DeletesPhotoFile()
+        {
+            var box = new Box("Test");
+            var item = new Item("Blue wool sweater");
+            box.Items.Add(item);
+            _service.AddBox(box);
+
+            using (var stream = new MemoryStream([1, 2, 3]))
+            {
+                _service.SetItemPhoto(item.Id, stream, ".jpg");
+            }
+            var photoPath = Path.Combine(_photoFolder, item.PhotoFileName!);
+            Assert.True(File.Exists(photoPath));   // checks if the file is there before removal
+
+            var result = _service.RemoveItemFromBox(box.Id, item.Id);
+
+            Assert.True(result);
+            Assert.False(File.Exists(photoPath));
+            Assert.Null(_service.FindItemById(item.Id));
+        }
+
+        [Fact]
+        public void RemoveBox_BoxWithPhotoItems_DeletesAllPhotoFiles()
+        {
+            var box = new Box("Test");
+            var sweater = new Item("Blue wool sweater");
+            var scarf = new Item("Red scarf");
+            box.Items.Add(sweater);
+            box.Items.Add(scarf);
+            _service.AddBox(box);
+
+            using (var s1 = new MemoryStream([1, 2, 3]))
+            {
+                _service.SetItemPhoto(sweater.Id, s1, ".jpg");
+            }
+            using (var s2 = new MemoryStream([4, 5, 6]))
+            {
+                _service.SetItemPhoto(scarf.Id, s2, ".png");
+            }
+            var path1 = Path.Combine(_photoFolder, sweater.PhotoFileName!);
+            var path2 = Path.Combine(_photoFolder, scarf.PhotoFileName!);
+
+            var result = _service.RemoveBox(box.Id);
+
+            Assert.True(result);
+            Assert.False(File.Exists(path1));
+            Assert.False(File.Exists(path2));
+        }
     }
 }
