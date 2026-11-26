@@ -13,9 +13,9 @@ I built it to answer one question: *"Which box is my blue wool sweater in?"*
 
 ### Planned
 
-- [ ] Save and load data (SQL)
+- [x] Save and load data (SQL)
 - [ ] Console front end
-- [ ] Unit tests
+- [x] Unit tests
 - [ ] Graphical front end
 
 ## Project structure
@@ -26,10 +26,14 @@ StowIt/
 │   ├── Box.cs
 │   ├── Item.cs
 │   ├── Category.cs
+│   ├── StowItDbContext.cs
 │   ├── StorageArea.cs
 │   └── StorageService.cs
 └── StowIt.Test/      Testing of functions in library
-└── StowIt.App/       Front end that uses the library (coming soon)
+│   └── StowItTests.cs
+└── StowIt.App/       Front end that uses the library
+    ├── Program.cs
+    └── StowItDbContextFactory.cs
 ```
 
 The library only returns data. Any front end (console, WPF, web) decides how to display it.
